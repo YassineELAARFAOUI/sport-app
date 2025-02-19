@@ -1,17 +1,24 @@
 'use client';
 import { useState } from "react";
 import * as actions from '@/actions';
+import { useRouter } from "next/navigation"; // Importation de useRouter
 
 export default function CreateArticle() {
     const [formState, setFormState] = useState({ message: '' });
+    const router = useRouter(); // Initialiser le hook de redirection
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
 
         try {
-            await actions.createArticle(formData);
-            setFormState({ message: 'Article created successfully!' });
+            const response = await actions.createArticle(formData);
+            setFormState({ message: response.message });
+
+            if (response.success) {
+                // Rediriger vers la page d'accueil après succès
+                router.push('/');
+            }
         } catch (error) {
             setFormState({ message: 'Error creating article.' });
         }

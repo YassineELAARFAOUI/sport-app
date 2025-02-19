@@ -1,6 +1,6 @@
-import { loginUser } from '../src/actions/index'; // Adapter le chemin d'importation
+import { loginUser } from '../src/actions/index';
 import { db } from '../src/db/index';
-import { redirect } from 'next/navigation';
+import { cookies } from "next/headers";
 
 // Mock de la base de données
 jest.mock('../src/db/index', () => ({
@@ -11,9 +11,12 @@ jest.mock('../src/db/index', () => ({
     },
 }));
 
-// Mock de la redirection
-jest.mock('next/navigation', () => ({
-    redirect: jest.fn(),
+// Création d'un mock global pour `cookies()`
+const mockSet = jest.fn();
+jest.mock('next/headers', () => ({
+    cookies: jest.fn(() => ({
+        set: mockSet, // Associer `set` à un mock global
+    })),
 }));
 
 describe('Login Function', () => {
@@ -21,45 +24,65 @@ describe('Login Function', () => {
         jest.clearAllMocks();
     });
 
-    test('loginUser should redirect if user not found', async () => {
+    test('loginUser should return an error if user is not found', async () => {
         const formData = new FormData();
-        formData.append('email', 'nonexistent@example.com');
+        formData.append('email', 'elaarfaoui.yassine@gmail.com');
         formData.append('password', 'password123');
 
-        (db.user.findUnique as jest.Mock).mockResolvedValue(null); // Simuler un utilisateur introuvable
+        (db.user.findUnique as jest.Mock).mockResolvedValue(null);
 
-        await loginUser(formData);
+        const response = await loginUser(formData);
 
-        expect(redirect).toHaveBeenCalledWith('/login');
+        expect(response).toEqual({ success: false, error: "User not found" });
     });
 
-    test('loginUser should redirect if password is incorrect', async () => {
+    test('loginUser should return an error if password is incorrect', async () => {
         const formData = new FormData();
-        formData.append('email', 'john.doe@example.com');
+        formData.append('email', 'elaarfaoui.yassine@gmail.com');
         formData.append('password', 'wrongpassword');
 
         (db.user.findUnique as jest.Mock).mockResolvedValue({
-            email: 'john.doe@example.com',
-            password: 'password123', // Mot de passe correct en base
+            id: '1',
+            name: 'Yassine ELAARFAOUI',
+            email: 'elaarfaoui.yassine@gmail.com',
+            password: 'password123',
+            role: 'AUTHOR',
         });
 
-        await loginUser(formData);
+        const response = await loginUser(formData);
 
-        expect(redirect).toHaveBeenCalledWith('/login');
+        expect(response).toEqual({ success: false, error: "Invalid password" });
     });
 
-    test('loginUser should redirect to home if login is successful', async () => {
+    test('loginUser should set cookie and return success if login is successful', async () => {
         const formData = new FormData();
-        formData.append('email', 'john.doe@example.com');
+        formData.append('email', 'elaarfaoui.yassine@gmail.com');
         formData.append('password', 'password123');
 
-        (db.user.findUnique as jest.Mock).mockResolvedValue({
+        const mockUser = {
+            id: '1',
+            name: 'Yassine ELAARFAOUI',
             email: 'john.doe@example.com',
-            password: 'password123', // Mot de passe correct en base
+            password: 'password123',
+            role: 'AUTHOR',
+        };
+
+        (db.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+
+        const response = await loginUser(formData);
+
+        expect(response).toEqual({ success: true });
+
+        // Vérification que le cookie est bien défini
+        expect(mockSet).toHaveBeenCalledWith('user', JSON.stringify({
+            id: mockUser.id,
+            name: mockUser.name,
+            email: mockUser.email,
+            role: mockUser.role
+        }), {
+            httpOnly: true,
+            path: '/',
+            maxAge: 60 * 60 * 24,
         });
-
-        await loginUser(formData);
-
-        expect(redirect).toHaveBeenCalledWith('/');
     });
 });

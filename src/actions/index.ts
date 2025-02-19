@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { writeFile } from 'fs/promises';
 import path from 'path';
 import cookie from 'cookie';
+import { cookies } from "next/headers";
 type Role = 'VIEWER' | 'AUTHOR' | 'ADMIN'; // Define Role type explicitly if needed
 
 export async function createUser(formData: FormData) {
@@ -31,27 +32,38 @@ export async function createUser(formData: FormData) {
 }
 
 //login a user
+// Assurez-vous de bien configurer la session ou les cookies.
 export async function loginUser(formData: FormData) {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
+    // Récupère l'utilisateur avec les données les plus récentes de la base de données
     const user = await db.user.findUnique({ where: { email } });
 
     if (!user) {
-        console.log("User not found");
-        redirect('/login'); // Redirection si l'utilisateur n'existe pas
-        return; // Ajout d'un return pour éviter que le code continue
+        return { success: false, error: "User not found" };
     }
 
+    // Vérifie si le mot de passe correspond
     if (user.password !== password) {
-        console.log("Invalid password");
-        redirect('/login'); // Redirection si le mot de passe est incorrect
-        return; // Ajout d'un return pour éviter que le code continue
+        return { success: false, error: "Invalid password" };
     }
 
-    console.log("Login successful");
-    redirect('/'); // Redirection en cas de succès
+    // Met à jour le cookie avec les informations les plus récentes
+    cookies().set('user', JSON.stringify({
+        id: user.id,
+        name: user.name, // Nom mis à jour
+        email: user.email,
+        role: user.role
+    }), {
+        httpOnly: true, // pour éviter l'accès au cookie par JavaScript côté client
+        path: '/', 
+        maxAge: 60 * 60 * 24, // 1 jour de validité
+    });
+
+    return { success: true };
 }
+
 
 //create article 
 export async function createArticle(formData: FormData) {
@@ -65,27 +77,39 @@ export async function createArticle(formData: FormData) {
             throw new Error("Image file is required");
         }
 
+        // Récupérer l'ID de l'utilisateur à partir des cookies
+        const cookie = cookies().get('user');
+        if (!cookie) {
+            throw new Error("User is not logged in");
+        }
+
+        const user = JSON.parse(cookie.value);
+        const authorId = user.id;
+
         // Stocker l'image sur le serveur
         const filePath = path.join(process.cwd(), 'public/uploads', file.name);
         await writeFile(filePath, Buffer.from(await file.arrayBuffer()));
 
-        // Création de l'article avec `authorId = 1`
+        // Création de l'article avec l'ID de l'utilisateur
         await db.article.create({
             data: {
                 title,
                 content,
                 price,
                 imageUrl: `/uploads/${file.name}`,
-                authorId: 1 // Valeur par défaut de l'auteur
+                authorId: authorId // Utilisation de l'ID de l'utilisateur connecté
             }
         });
 
+        // Retourner une réponse à côté client
+        return { success: true, message: "Article created successfully!" };
+
     } catch (error) {
         console.error("Error creating article:", error);
-        throw new Error("Failed to create article");
+        return { success: false, message: "Failed to create article" };
     }
 }
-//recupere toutes les articles :
+//recupere toutes les articles :z
 export async function getAllArticles() {
     try {
         const articles = await db.article.findMany();
@@ -109,24 +133,20 @@ export async function updateArticle(id: string, formData: FormData) {
     const price = new Decimal(formData.get("price") as string);
     const file = formData.get("imageUrl") as File;
 
+    let updateData: any = { title, content, price };
+
     // Vérification si une nouvelle image a été téléchargée
-    let imageUrl = null;
-    if (file) {
+    if (file && file.size > 0) {
         const filePath = path.join(process.cwd(), 'public/uploads', file.name);
         await writeFile(filePath, Buffer.from(await file.arrayBuffer()));
 
-        // Utiliser le chemin relatif pour la base de données
-        imageUrl = `/uploads/${file.name}`;
+        // Ajouter l'image au champ de mise à jour
+        updateData.imageUrl = `/uploads/${file.name}`;
     }
 
     await db.article.update({
         where: { id: Number(id) },
-        data: {
-            title,
-            content,
-            price,
-            imageUrl: imageUrl ?? undefined, // Si l'image n'est pas définie, on ne change pas l'image
-        },
+        data: updateData,
     });
 }
 //recupere un user par son id 

@@ -23,21 +23,27 @@ describe('User Functions', () => {
 
     test('createUser should create a new user and redirect', async () => {
         const formData = new FormData();
-        formData.append('name', 'John Doe');
-        formData.append('email', 'john.doe@example.com');
+        formData.append('name', 'Yassine ELAARFAOUI');
+        formData.append('email', 'elaarfaoui.yassine@example.com');
         formData.append('password', 'password123');
         formData.append('role', 'AUTHOR');
+
+        // Espionner console.log pour éviter les logs dans le test
+        const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
         await createUser(formData);
 
         expect(db.user.create).toHaveBeenCalledWith({
             data: {
-                name: 'John Doe',
-                email: 'john.doe@example.com',
+                name: 'Yassine ELAARFAOUI',
+                email: 'elaarfaoui.yassine@example.com',
                 password: 'password123',
                 role: 'AUTHOR',
             },
         });
         expect(redirect).toHaveBeenCalledWith('/login');
+
+        // Restaurer le comportement de console.log
+        consoleSpy.mockRestore();
     });
 });

@@ -21,7 +21,7 @@ export default async function UserPage({ params }: { params: { id: string } }) {
 
                 <div className="mt-6">
                     <Link
-                        href={`/user/edit/${user.id}`}
+                        href={`/user/${user.id}/edit`}
                         className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600"
                     >
                         Modifier les informations
