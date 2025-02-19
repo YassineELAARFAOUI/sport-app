@@ -8,9 +8,17 @@ export default async function Home() {
 
     if (!cookie) {
         return (
-            <div>
-                <h1>Bienvenue sur la page d'accueil</h1>
-                <p>Vous n'êtes pas connecté.</p>
+            <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 py-10">
+                <h1 className="text-3xl font-bold mb-4">Bienvenue sur la page d'accueil</h1>
+                <p className="text-xl mb-4">Vous n'êtes pas connecté.</p>
+                {/* Bouton de redirection vers la page de login */}
+                <div className="text-center">
+                    <Link href="/login">
+                        <button className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
+                            Se connecter
+                        </button>
+                    </Link>
+                </div>
             </div>
         );
     }
