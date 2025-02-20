@@ -2,6 +2,16 @@ import { cookies } from "next/headers"; // Utiliser cookies de Next.js
 import { getAllArticles } from "@/actions"; // Assure-toi que le chemin est correct
 import Image from "next/image";
 import Link from "next/link";
+import { Decimal } from "@prisma/client/runtime/library";
+
+// Définir l'interface pour les articles
+interface Article {
+  id: number;
+  title: string;
+  content: string;
+  price: Decimal;
+  imageUrl: string | null; // L'image peut être absente
+}
 
 export default async function Home() {
     const cookie = cookies().get('user'); // Récupérer le cookie de session
@@ -24,7 +34,7 @@ export default async function Home() {
     }
 
     const user = JSON.parse(cookie.value); // Extraire les données de l'utilisateur à partir du cookie
-    const articles = await getAllArticles(); // Récupérer les articles
+    const articles: Article[] = await getAllArticles(); // Récupérer les articles avec typage explicite
 
     return (
         <div className="min-h-screen bg-gray-100 py-10">
@@ -60,7 +70,7 @@ export default async function Home() {
                 {/* Affichage de la liste des articles */}
                 <h2 className="text-2xl font-semibold text-center mb-8">Liste des Articles</h2>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {articles.map((article) => (
+                    {articles.map((article: Article) => (
                         <Link key={article.id} href={`/articles/${article.id}`}>
                             <div className="bg-white rounded-lg shadow-lg p-4 cursor-pointer hover:shadow-xl transition">
                                 {/* Vérifier si imageUrl est valide avant d'afficher l'image */}
